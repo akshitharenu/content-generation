@@ -92,9 +92,9 @@ def _build_pdf(article: Article) -> bytes:
             self.cell(0, 10, f"Page {self.page_no()}  |  Generated {datetime.utcnow().strftime('%Y-%m-%d')}", align="C")
 
     pdf = _PDF()
+    pdf.set_margins(18, 18, 18)
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
-    pdf.set_margins(18, 18, 18)
 
     # Category tag
     pdf.set_font("Helvetica", "B", 8)
