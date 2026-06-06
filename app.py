@@ -253,20 +253,6 @@ with st.sidebar:
     st.caption("AI-Powered Industry Content Workflow")
     st.divider()
 
-    env_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if "api_key" not in st.session_state:
-        st.session_state["api_key"] = env_key
-
-    sidebar_key = st.text_input(
-        "ANTHROPIC_API_KEY",
-        value=st.session_state["api_key"],
-        type="password",
-        placeholder="sk-ant-...",
-        help="Paste your Anthropic API key, or set ANTHROPIC_API_KEY in .env",
-    )
-    if sidebar_key:
-        st.session_state["api_key"] = sidebar_key
-
     st.divider()
 
     generation_mode = st.radio(
@@ -320,13 +306,9 @@ if generation_mode == "Single article":
         selected_cat = st.selectbox("Category", cat_options)
 
     if st.button("Generate Article", type="primary"):
-        api_key = st.session_state.get("api_key", "").strip()
-        if not api_key:
-            st.warning("Please enter your Anthropic API key in the sidebar.")
-        elif not topic_input.strip():
+        if not topic_input.strip():
             st.warning("Please enter a topic.")
         else:
-            os.environ["ANTHROPIC_API_KEY"] = api_key
             cat_override = None if selected_cat == "Auto-detect" else selected_cat
             with st.spinner("Running 6-agent pipeline…"):
                 try:
@@ -348,14 +330,10 @@ elif generation_mode == "Batch — multiple topics":
         selected_cat2 = st.selectbox("Category override (applies to all)", cat_options2)
 
     if st.button("Generate Batch", type="primary"):
-        api_key = st.session_state.get("api_key", "").strip()
         topics_list = [t.strip() for t in topics_raw.splitlines() if t.strip()]
-        if not api_key:
-            st.warning("Please enter your Anthropic API key in the sidebar.")
-        elif not topics_list:
+        if not topics_list:
             st.warning("Please enter at least one topic.")
         else:
-            os.environ["ANTHROPIC_API_KEY"] = api_key
             cat_override = None if selected_cat2 == "Auto-detect" else selected_cat2
             st.session_state.setdefault("articles", [])
             progress = st.progress(0, text="Starting batch…")
@@ -381,13 +359,9 @@ else:
     topic_map = {t["category"]: t["topic"] for t in sample_topics if t.get("category")}
 
     if st.button("Run Category Sweep", type="primary"):
-        api_key = st.session_state.get("api_key", "").strip()
-        if not api_key:
-            st.warning("Please enter your Anthropic API key in the sidebar.")
-        elif not selected_cats:
+        if not selected_cats:
             st.warning("Select at least one category.")
         else:
-            os.environ["ANTHROPIC_API_KEY"] = api_key
             st.session_state.setdefault("articles", [])
             progress = st.progress(0, text="Starting sweep…")
             for i, cat in enumerate(selected_cats):
