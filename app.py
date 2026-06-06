@@ -36,141 +36,118 @@ _SAMPLE_TOPICS_PATH = os.path.join(_PROJECT_ROOT, "sample_topics.json")
 # ---------------------------------------------------------------------------
 # PDF builder — uses fpdf2 (no external binary required)
 # ---------------------------------------------------------------------------
-def _sanitize(text: str) -> str:
-    """Replace all non-Latin-1 characters with ASCII equivalents for fpdf2 core fonts."""
-    replacements = [
-        ("—", "-"),    # em dash
-        ("–", "-"),    # en dash
-        ("‘", "'"),    # left single quote
-        ("’", "'"),    # right single quote
-        ("“", '"'),    # left double quote
-        ("”", '"'),    # right double quote
-        ("•", "-"),    # bullet
-        (" ", " "),    # non-breaking space
-        ("…", "..."),  # ellipsis
-        ("€", "EUR"),  # euro sign
-        ("£", "GBP"),  # pound sign
-        ("¥", "JPY"),  # yen sign
-        ("°", " deg"), # degree
-        ("²", "2"),    # superscript 2
-        ("³", "3"),    # superscript 3
-        ("×", "x"),    # multiplication
-        ("÷", "/"),    # division
-        ("≈", "~"),    # almost equal
-        ("≥", ">="),   # greater or equal
-        ("≤", "<="),   # less or equal
-        ("é", "e"),    # e acute
-        ("è", "e"),    # e grave
-        ("ê", "e"),    # e circumflex
-        ("ü", "u"),    # u umlaut
-        ("ä", "a"),    # a umlaut
-        ("ö", "o"),    # o umlaut
-        ("ß", "ss"),   # sharp s
-    ]
-    for char, repl in replacements:
-        text = text.replace(char, repl)
-    # Final catch-all: drop anything still outside Latin-1
-    return text.encode("latin-1", errors="replace").decode("latin-1")
-
 def _build_pdf(article: Article) -> bytes:
-    from fpdf import FPDF
+    """Build a PDF using reportlab — handles all Unicode including EUR, em-dashes etc."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+    )
+    from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 
-    class _PDF(FPDF):
-        def header(self):
-            self.set_font("Helvetica", "B", 9)
-            self.set_text_color(120, 120, 120)
-            self.cell(0, 8, "GREEN STEEL NEWS  |  AI-Generated Industry Content", align="R")
-            self.ln(2)
-            self.set_draw_color(200, 200, 200)
-            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-            self.ln(4)
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=20*mm, rightMargin=20*mm,
+        topMargin=22*mm, bottomMargin=22*mm,
+    )
 
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Helvetica", "I", 8)
-            self.set_text_color(160, 160, 160)
-            self.cell(0, 10, f"Page {self.page_no()}  |  Generated {datetime.utcnow().strftime('%Y-%m-%d')}", align="C")
+    styles = getSampleStyleSheet()
+    green = colors.HexColor("#1e6430")
+    dark  = colors.HexColor("#111111")
+    grey  = colors.HexColor("#555555")
+    light = colors.HexColor("#f5f5f5")
 
-    pdf = _PDF()
-    pdf.set_margins(18, 18, 18)
-    pdf.set_auto_page_break(auto=True, margin=18)
-    pdf.add_page()
+    cat_style = ParagraphStyle("cat", fontName="Helvetica-Bold", fontSize=8,
+                                textColor=colors.white, backColor=green,
+                                spaceAfter=6, spaceBefore=0, leading=14,
+                                leftIndent=4, rightIndent=4)
+    headline_style = ParagraphStyle("headline", fontName="Helvetica-Bold", fontSize=20,
+                                     textColor=dark, spaceAfter=6, leading=24)
+    dateline_style = ParagraphStyle("dateline", fontName="Helvetica-Oblique", fontSize=10,
+                                     textColor=grey, spaceAfter=4)
+    body_style = ParagraphStyle("body", fontName="Helvetica", fontSize=11,
+                                 textColor=dark, spaceAfter=8, leading=16)
+    label_style = ParagraphStyle("label", fontName="Helvetica-Bold", fontSize=9,
+                                  textColor=dark, spaceAfter=2)
+    meta_style = ParagraphStyle("meta", fontName="Helvetica", fontSize=9,
+                                 textColor=grey, spaceAfter=3)
+    source_style = ParagraphStyle("source", fontName="Helvetica", fontSize=8,
+                                   textColor=colors.HexColor("#3050b4"), spaceAfter=3)
+    footer_style = ParagraphStyle("footer", fontName="Helvetica", fontSize=8,
+                                   textColor=grey, alignment=TA_CENTER)
 
-    # Category tag
-    pdf.set_font("Helvetica", "B", 8)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_fill_color(30, 100, 60)
-    pdf.cell(0, 7, f"  {_sanitize(article.category).upper()}  ", fill=True, ln=True)
-    pdf.ln(4)
+    story = []
+    qs = article.quality_score
+
+    # Category banner
+    story.append(Paragraph(f"&nbsp;&nbsp;{article.category.upper()}&nbsp;&nbsp;", cat_style))
+    story.append(Spacer(1, 4*mm))
 
     # Headline
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.set_text_color(15, 15, 15)
-    pdf.multi_cell(0, 10, _sanitize(article.headline))
-    pdf.ln(3)
+    story.append(Paragraph(article.headline, headline_style))
 
     # Dateline
-    pdf.set_font("Helvetica", "I", 10)
-    pdf.set_text_color(90, 90, 90)
-    pdf.cell(0, 6, _sanitize(article.dateline), ln=True)
-    pdf.ln(2)
+    story.append(Paragraph(article.dateline, dateline_style))
 
-    # Divider
-    pdf.set_draw_color(30, 100, 60)
-    pdf.set_line_width(0.8)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
-    pdf.set_line_width(0.2)
-    pdf.ln(5)
+    # Green rule
+    story.append(HRFlowable(width="100%", thickness=1.5, color=green, spaceAfter=6))
 
-    # Body
-    pdf.set_font("Helvetica", "", 11)
-    pdf.set_text_color(20, 20, 20)
-    paragraphs = [p.strip() for p in article.body.split("\n\n") if p.strip()]
-    for para in paragraphs:
-        pdf.multi_cell(0, 6, _sanitize(para))
-        pdf.ln(3)
+    # Body paragraphs
+    for para in article.body.split("\n\n"):
+        para = para.strip()
+        if para:
+            # Escape XML special chars for reportlab
+            para = para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            story.append(Paragraph(para, body_style))
 
-    # Metadata box
-    pdf.ln(4)
-    pdf.set_draw_color(200, 200, 200)
-    pdf.set_fill_color(248, 248, 248)
-    pdf.set_font("Helvetica", "B", 9)
-    pdf.set_text_color(60, 60, 60)
-    pdf.cell(0, 7, "ARTICLE METADATA", fill=True, ln=True)
+    story.append(Spacer(1, 6*mm))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey, spaceAfter=4))
 
-    pdf.set_font("Helvetica", "", 9)
-    qs = article.quality_score
-    meta_lines = [
-        f"Category: {article.category}  |  Confidence: {article.category_confidence * 100:.0f}%",
-        f"Word Count: {article.word_count}",
-        f"Quality Score: {qs.overall:.2f}/10  |  Status: {'PASS' if qs and qs.passed else 'FAIL'}" if qs else "Quality Score: N/A",
-        f"Created: {article.created_at[:10]}",
+    # Metadata table
+    story.append(Paragraph("ARTICLE METADATA", label_style))
+    score_str = f"{qs.overall:.2f}/10  —  {'PASS' if qs.passed else 'FAIL'}" if qs else "N/A"
+    meta_data = [
+        ["Category:", article.category],
+        ["Confidence:", f"{article.category_confidence*100:.0f}%"],
+        ["Word Count:", str(article.word_count)],
+        ["Quality Score:", score_str],
+        ["Created:", article.created_at[:10]],
     ]
-    for line in meta_lines:
-        pdf.cell(0, 5, _sanitize(line), ln=True)
+    t = Table(meta_data, colWidths=[40*mm, 120*mm])
+    t.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+        ("FONTNAME", (1,0), (1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0), (-1,-1), 9),
+        ("TEXTCOLOR", (0,0), (0,-1), dark),
+        ("TEXTCOLOR", (1,0), (1,-1), grey),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+        ("TOPPADDING", (0,0), (-1,-1), 3),
+        ("BACKGROUND", (0,0), (-1,-1), light),
+    ]))
+    story.append(t)
 
     # Sources
     if article.sources:
-        pdf.ln(3)
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.cell(0, 6, "SOURCES", ln=True)
-        pdf.set_font("Helvetica", "", 8)
-        pdf.set_text_color(50, 80, 180)
+        story.append(Spacer(1, 4*mm))
+        story.append(Paragraph("SOURCES", label_style))
         for src in article.sources[:6]:
-            pdf.multi_cell(0, 5, _sanitize(src[:120]))
-        pdf.set_text_color(20, 20, 20)
+            src_escaped = src[:120].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            story.append(Paragraph(src_escaped, source_style))
 
     # Key players
     if article.key_players:
-        pdf.ln(2)
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(60, 60, 60)
-        pdf.cell(0, 6, "KEY PLAYERS", ln=True)
-        pdf.set_font("Helvetica", "", 9)
-        pdf.multi_cell(0, 5, _sanitize("  |  ".join(article.key_players)))
+        story.append(Spacer(1, 3*mm))
+        story.append(Paragraph("KEY PLAYERS", label_style))
+        players = "  |  ".join(article.key_players)
+        story.append(Paragraph(players, meta_style))
 
-    return bytes(pdf.output())
-
+    doc.build(story)
+    return buf.getvalue()
 
 # ---------------------------------------------------------------------------
 # Markdown / JSON builders
