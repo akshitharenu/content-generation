@@ -36,8 +36,23 @@ _SAMPLE_TOPICS_PATH = os.path.join(_PROJECT_ROOT, "sample_topics.json")
 # ---------------------------------------------------------------------------
 # PDF builder — uses fpdf2 (no external binary required)
 # ---------------------------------------------------------------------------
+def _sanitize(text: str) -> str:
+    """Replace characters unsupported by core PDF fonts with safe equivalents."""
+    return (
+        text.replace("—", "-")   # em dash
+            .replace("–", "-")   # en dash
+            .replace("‘", "'")   # left single quote
+            .replace("’", "'")   # right single quote
+            .replace("“", '"')   # left double quote
+            .replace("”", '"')   # right double quote
+            .replace("•", "-")   # bullet
+            .replace(" ", " ")   # non-breaking space
+            .replace("…", "...")  # ellipsis
+    )
+
+
 def _build_pdf(article: Article) -> bytes:
-    from fpdf import FPDF  # imported lazily so app loads even if fpdf2 not installed yet
+    from fpdf import FPDF
 
     class _PDF(FPDF):
         def header(self):
@@ -64,19 +79,19 @@ def _build_pdf(article: Article) -> bytes:
     pdf.set_font("Helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
     pdf.set_fill_color(30, 100, 60)
-    pdf.cell(0, 7, f"  {article.category.upper()}  ", fill=True, ln=True)
+    pdf.cell(0, 7, f"  {_sanitize(article.category).upper()}  ", fill=True, ln=True)
     pdf.ln(4)
 
     # Headline
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(15, 15, 15)
-    pdf.multi_cell(0, 10, article.headline)
+    pdf.multi_cell(0, 10, _sanitize(article.headline))
     pdf.ln(3)
 
     # Dateline
     pdf.set_font("Helvetica", "I", 10)
     pdf.set_text_color(90, 90, 90)
-    pdf.cell(0, 6, article.dateline, ln=True)
+    pdf.cell(0, 6, _sanitize(article.dateline), ln=True)
     pdf.ln(2)
 
     # Divider
@@ -86,12 +101,12 @@ def _build_pdf(article: Article) -> bytes:
     pdf.set_line_width(0.2)
     pdf.ln(5)
 
-    # Body — split on double newlines to preserve paragraphs
+    # Body
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(20, 20, 20)
     paragraphs = [p.strip() for p in article.body.split("\n\n") if p.strip()]
     for para in paragraphs:
-        pdf.multi_cell(0, 6, para)
+        pdf.multi_cell(0, 6, _sanitize(para))
         pdf.ln(3)
 
     # Metadata box
@@ -111,7 +126,7 @@ def _build_pdf(article: Article) -> bytes:
         f"Created: {article.created_at[:10]}",
     ]
     for line in meta_lines:
-        pdf.cell(0, 5, line, ln=True)
+        pdf.cell(0, 5, _sanitize(line), ln=True)
 
     # Sources
     if article.sources:
@@ -121,7 +136,7 @@ def _build_pdf(article: Article) -> bytes:
         pdf.set_font("Helvetica", "", 8)
         pdf.set_text_color(50, 80, 180)
         for src in article.sources[:6]:
-            pdf.multi_cell(0, 5, src[:120])
+            pdf.multi_cell(0, 5, _sanitize(src[:120]))
         pdf.set_text_color(20, 20, 20)
 
     # Key players
@@ -131,7 +146,7 @@ def _build_pdf(article: Article) -> bytes:
         pdf.set_text_color(60, 60, 60)
         pdf.cell(0, 6, "KEY PLAYERS", ln=True)
         pdf.set_font("Helvetica", "", 9)
-        pdf.multi_cell(0, 5, "  |  ".join(article.key_players))
+        pdf.multi_cell(0, 5, _sanitize("  |  ".join(article.key_players)))
 
     return bytes(pdf.output())
 
