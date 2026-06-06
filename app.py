@@ -37,19 +37,40 @@ _SAMPLE_TOPICS_PATH = os.path.join(_PROJECT_ROOT, "sample_topics.json")
 # PDF builder — uses fpdf2 (no external binary required)
 # ---------------------------------------------------------------------------
 def _sanitize(text: str) -> str:
-    """Replace characters unsupported by core PDF fonts with safe equivalents."""
-    return (
-        text.replace("—", "-")   # em dash
-            .replace("–", "-")   # en dash
-            .replace("‘", "'")   # left single quote
-            .replace("’", "'")   # right single quote
-            .replace("“", '"')   # left double quote
-            .replace("”", '"')   # right double quote
-            .replace("•", "-")   # bullet
-            .replace(" ", " ")   # non-breaking space
-            .replace("…", "...")  # ellipsis
-    )
-
+    """Replace all non-Latin-1 characters with ASCII equivalents for fpdf2 core fonts."""
+    replacements = [
+        ("—", "-"),    # em dash
+        ("–", "-"),    # en dash
+        ("‘", "'"),    # left single quote
+        ("’", "'"),    # right single quote
+        ("“", '"'),    # left double quote
+        ("”", '"'),    # right double quote
+        ("•", "-"),    # bullet
+        (" ", " "),    # non-breaking space
+        ("…", "..."),  # ellipsis
+        ("€", "EUR"),  # euro sign
+        ("£", "GBP"),  # pound sign
+        ("¥", "JPY"),  # yen sign
+        ("°", " deg"), # degree
+        ("²", "2"),    # superscript 2
+        ("³", "3"),    # superscript 3
+        ("×", "x"),    # multiplication
+        ("÷", "/"),    # division
+        ("≈", "~"),    # almost equal
+        ("≥", ">="),   # greater or equal
+        ("≤", "<="),   # less or equal
+        ("é", "e"),    # e acute
+        ("è", "e"),    # e grave
+        ("ê", "e"),    # e circumflex
+        ("ü", "u"),    # u umlaut
+        ("ä", "a"),    # a umlaut
+        ("ö", "o"),    # o umlaut
+        ("ß", "ss"),   # sharp s
+    ]
+    for char, repl in replacements:
+        text = text.replace(char, repl)
+    # Final catch-all: drop anything still outside Latin-1
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 def _build_pdf(article: Article) -> bytes:
     from fpdf import FPDF
