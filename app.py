@@ -10,6 +10,10 @@ import zipfile
 from datetime import datetime
 from typing import List
 
+# Fix "Event loop is closed" error on Windows with Python 3.10+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from dotenv import load_dotenv
 load_dotenv()
 
