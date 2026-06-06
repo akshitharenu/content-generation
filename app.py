@@ -6,6 +6,9 @@ import json
 import os
 import sys
 
+from dotenv import load_dotenv
+load_dotenv()  # loads ANTHROPIC_API_KEY from .env if present
+
 import streamlit as st
 
 # ---------------------------------------------------------------------------

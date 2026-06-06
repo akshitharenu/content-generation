@@ -1,10 +1,11 @@
+import os
 from __future__ import annotations
 
 import logging
 
 import anthropic
 
-from config import API_KEY, MAX_TOKENS, MODEL
+from config import MAX_TOKENS, MODEL
 from utils import HUMANIZER_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class HumanizerAgent:
     """
 
     def __init__(self) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=API_KEY)
+        self._client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY",""))
 
     async def run(self, article_text: str) -> str:
         """Return the humanized article text.

@@ -81,7 +81,7 @@ async def run_pipeline(topic: str, category_override: str | None = None) -> Arti
 
     # --- Agent 1: Research ---
     research_agent = ResearchAgent()
-    research = await research_agent.run(topic)
+    research = await research_agent.run(topic, category=category_override)
 
     # --- Agent 2: Category classification ---
     category_agent = CategoryAgent()

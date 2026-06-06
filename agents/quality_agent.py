@@ -1,3 +1,4 @@
+import os
 from __future__ import annotations
 
 import json
@@ -5,7 +6,7 @@ import logging
 
 import anthropic
 
-from config import API_KEY, MAX_TOKENS, MODEL, QUALITY_THRESHOLD
+from config import MAX_TOKENS, MODEL, QUALITY_THRESHOLD
 from models import QualityScore
 from utils import QUALITY_SYSTEM_PROMPT
 
@@ -21,7 +22,7 @@ class QualityAgent:
     """
 
     def __init__(self) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=API_KEY)
+        self._client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY",""))
 
     async def run(self, article_text: str, category: str) -> QualityScore:
         """Score *article_text* and return a QualityScore."""
