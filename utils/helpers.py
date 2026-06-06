@@ -7,6 +7,34 @@ from datetime import datetime
 from typing import Any
 
 
+def extract_json(text: str) -> dict:
+    """
+    Robustly extract a JSON object from Claude's response.
+    Handles markdown fences, extra text before/after, and trailing commas.
+    """
+    # Strip markdown fences
+    text = re.sub(r"```(?:json)?\s*", "", text).strip()
+
+    # Try direct parse first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Find the outermost { ... } block
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        candidate = match.group(0)
+        # Remove trailing commas before } or ]
+        candidate = re.sub(r",\s*([\}\]])", r"\1", candidate)
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Could not extract valid JSON from Claude response:\n{text[:400]}")
+
+
 def generate_slug(headline: str) -> str:
     """Convert a headline into a URL-safe slug."""
     slug = headline.lower()

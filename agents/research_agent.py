@@ -18,6 +18,7 @@ import anthropic
 from config import MAX_TOKENS, MODEL
 from models import ResearchInput
 from utils import RESEARCH_SYSTEM_PROMPT
+from utils.helpers import extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -385,11 +386,7 @@ class ResearchAgent:
         )
 
         raw_text = message.content[0].text.strip()
-        if raw_text.startswith("```"):
-            lines    = raw_text.splitlines()
-            raw_text = "\n".join(l for l in lines if not l.startswith("```")).strip()
-
-        data         = json.loads(raw_text)
+        data     = extract_json(raw_text)
         data["topic"] = topic
 
         live_urls        = [e["link"] for e in live_entries if e.get("link")][:6]

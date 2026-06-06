@@ -9,6 +9,7 @@ import anthropic
 from config import CATEGORIES, MAX_TOKENS, MODEL
 from models import ResearchInput
 from utils import CATEGORY_SYSTEM_PROMPT
+from utils.helpers import extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -71,13 +72,7 @@ class CategoryAgent:
         )
 
         raw_text = message.content[0].text.strip()
-        if raw_text.startswith("```"):
-            lines = raw_text.splitlines()
-            raw_text = "\n".join(
-                line for line in lines if not line.startswith("```")
-            ).strip()
-
-        data = json.loads(raw_text)
+        data = extract_json(raw_text)
         category: str = data["category"]
         confidence: float = float(data["confidence"])
         reasoning: str = data["reasoning"]

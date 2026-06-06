@@ -9,6 +9,7 @@ import anthropic
 from config import MAX_TOKENS, MODEL, QUALITY_THRESHOLD
 from models import QualityScore
 from utils import QUALITY_SYSTEM_PROMPT
+from utils.helpers import extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +49,7 @@ class QualityAgent:
         )
 
         raw_text = message.content[0].text.strip()
-        if raw_text.startswith("```"):
-            lines = raw_text.splitlines()
-            raw_text = "\n".join(
-                line for line in lines if not line.startswith("```")
-            ).strip()
-
-        data = json.loads(raw_text)
+        data = extract_json(raw_text)
 
         score = QualityScore.compute(
             newsworthiness=float(data.get("newsworthiness", 5.0)),
